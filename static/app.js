@@ -9,6 +9,9 @@ const state = {
   winner: null,
   me: null,
   winScore: 3,
+  turnPlayerId: null,
+  turnPlayerName: null,
+  isMyTurn: false,
   selectedCardName: null,
 };
 
@@ -21,6 +24,7 @@ const el = {
   meName: document.getElementById("meName"),
   meScore: document.getElementById("meScore"),
   meLocation: document.getElementById("meLocation"),
+  turnLabel: document.getElementById("turnLabel"),
   playersList: document.getElementById("playersList"),
   board: document.getElementById("board"),
   logList: document.getElementById("logList"),
@@ -38,6 +42,23 @@ const el = {
 };
 
 let toastTimer = null;
+
+function setActionsEnabled(enabled) {
+  const controls = [
+    el.targetCardInput,
+    el.killBtn,
+    el.interrogateBtn,
+    el.rowIndexInput,
+    el.rowDirectionSelect,
+    el.shiftRowBtn,
+    el.colIndexInput,
+    el.colDirectionSelect,
+    el.shiftColBtn,
+  ];
+  controls.forEach((control) => {
+    control.disabled = !enabled;
+  });
+}
 
 function send(payload) {
   if (ws.readyState !== WebSocket.OPEN) {
@@ -134,6 +155,22 @@ function render() {
     el.meName.textContent = state.me.name;
     el.meScore.textContent = String(state.me.score);
     el.meLocation.textContent = state.me.locationName;
+
+    if (state.winner) {
+      el.turnLabel.textContent = "Игра завершена";
+      setActionsEnabled(false);
+    } else if (state.turnPlayerName) {
+      if (state.isMyTurn) {
+        el.turnLabel.textContent = "Ваш";
+        setActionsEnabled(true);
+      } else {
+        el.turnLabel.textContent = `Игрок ${state.turnPlayerName}`;
+        setActionsEnabled(false);
+      }
+    } else {
+      el.turnLabel.textContent = "Ожидание игроков";
+      setActionsEnabled(false);
+    }
   }
 
   if (state.winner) {
@@ -176,6 +213,9 @@ ws.addEventListener("message", (event) => {
     state.eventLog = data.state.eventLog || [];
     state.winner = data.state.winner || null;
     state.winScore = data.state.winScore || 3;
+    state.turnPlayerId = data.state.turnPlayerId || null;
+    state.turnPlayerName = data.state.turnPlayerName || null;
+    state.isMyTurn = Boolean(data.state.isMyTurn);
     state.me = data.state.me || null;
     render();
   }
@@ -197,6 +237,10 @@ el.nameInput.addEventListener("keydown", (event) => {
 });
 
 el.killBtn.addEventListener("click", () => {
+  if (!state.isMyTurn) {
+    showToast("Сейчас не ваш ход.");
+    return;
+  }
   const target = el.targetCardInput.value.trim();
   if (!target) {
     showToast("Укажите карту-цель.");
@@ -210,6 +254,10 @@ el.killBtn.addEventListener("click", () => {
 });
 
 el.interrogateBtn.addEventListener("click", () => {
+  if (!state.isMyTurn) {
+    showToast("Сейчас не ваш ход.");
+    return;
+  }
   const target = el.targetCardInput.value.trim();
   if (!target) {
     showToast("Укажите карту для допроса.");
@@ -223,6 +271,10 @@ el.interrogateBtn.addEventListener("click", () => {
 });
 
 el.shiftRowBtn.addEventListener("click", () => {
+  if (!state.isMyTurn) {
+    showToast("Сейчас не ваш ход.");
+    return;
+  }
   const index = Number(el.rowIndexInput.value);
   const direction = el.rowDirectionSelect.value;
   if (!Number.isInteger(index) || index < 1 || index > 7) {
@@ -233,6 +285,10 @@ el.shiftRowBtn.addEventListener("click", () => {
 });
 
 el.shiftColBtn.addEventListener("click", () => {
+  if (!state.isMyTurn) {
+    showToast("Сейчас не ваш ход.");
+    return;
+  }
   const index = Number(el.colIndexInput.value);
   const direction = el.colDirectionSelect.value;
   if (!Number.isInteger(index) || index < 1 || index > 7) {

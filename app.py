@@ -80,6 +80,8 @@ class Player:
 class GameRoom:
     board: list[list[str]] = field(default_factory=list)
     players: dict[str, Player] = field(default_factory=dict)
+    turn_order: list[str] = field(default_factory=list)
+    turn_index: int = 0
     event_log: list[str] = field(default_factory=list)
     winner_id: str | None = None
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
@@ -95,6 +97,8 @@ class GameRoom:
             names[row * BOARD_SIZE : (row + 1) * BOARD_SIZE] for row in range(BOARD_SIZE)
         ]
         self.players.clear()
+        self.turn_order.clear()
+        self.turn_index = 0
         self.event_log.clear()
         self.winner_id = None
 
@@ -168,14 +172,61 @@ class GameRoom:
             return self.players[self.winner_id].name
         return None
 
+    def current_turn_player_id(self) -> str | None:
+        if not self.turn_order:
+            return None
+        if self.turn_index >= len(self.turn_order):
+            self.turn_index = 0
+        return self.turn_order[self.turn_index]
+
+    def current_turn_player_name(self) -> str | None:
+        pid = self.current_turn_player_id()
+        if pid and pid in self.players:
+            return self.players[pid].name
+        return None
+
+    def advance_turn(self) -> None:
+        if not self.turn_order:
+            self.turn_index = 0
+            return
+        self.turn_index = (self.turn_index + 1) % len(self.turn_order)
+
+    def remove_player(self, player_id: str) -> Player | None:
+        departed = self.players.pop(player_id, None)
+        if departed is None:
+            return None
+
+        try:
+            removed_index = self.turn_order.index(player_id)
+        except ValueError:
+            removed_index = None
+        else:
+            self.turn_order.pop(removed_index)
+
+            if not self.turn_order:
+                self.turn_index = 0
+            elif removed_index < self.turn_index:
+                self.turn_index -= 1
+            elif removed_index == self.turn_index and self.turn_index >= len(self.turn_order):
+                self.turn_index = 0
+
+        if self.winner_id == player_id:
+            self.winner_id = None
+
+        return departed
+
     def state_for(self, player_id: str | None) -> dict[str, Any]:
         me = self.players.get(player_id) if player_id else None
+        turn_player_id = self.current_turn_player_id()
         return {
             "board": self.board,
             "players": self.public_players(),
             "eventLog": self.event_log,
             "winner": self.winner_name(),
             "winScore": WIN_SCORE,
+            "turnPlayerId": turn_player_id,
+            "turnPlayerName": self.current_turn_player_name(),
+            "isMyTurn": bool(me and turn_player_id and me.player_id == turn_player_id),
             "me": {
                 "id": me.player_id,
                 "name": me.name,
@@ -237,8 +288,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         pid = connections.pop(websocket, None)
         if pid and pid in room.players:
             async with room.lock:
-                departed = room.players.pop(pid)
-                room.append_event(f"{departed.name} покинул игру.")
+                departed = room.remove_player(pid)
+                if departed is not None:
+                    room.append_event(f"{departed.name} покинул игру.")
+                    if room.players and not room.winner_id:
+                        next_name = room.current_turn_player_name()
+                        if next_name:
+                            room.append_event(f"Теперь ход: {next_name}.")
             await send_state_to_all()
 
 
@@ -256,8 +312,11 @@ async def handle_join(websocket: WebSocket, payload: dict[str, Any]) -> None:
             name=name[:30],
             location_name=location_name,
         )
+        room.turn_order.append(player_id)
         connections[websocket] = player_id
         room.append_event(f"{name[:30]} присоединился к игре.")
+        if len(room.turn_order) == 1:
+            room.append_event(f"Первый ход: {name[:30]}.")
 
     await websocket.send_json({"type": "joined", "playerId": player_id})
     await send_state_to_all()
@@ -278,6 +337,17 @@ async def handle_action(websocket: WebSocket, payload: dict[str, Any]) -> None:
                 {
                     "type": "error",
                     "message": "Игра уже завершена. Обновите страницу для новой партии.",
+                }
+            )
+            return
+
+        current_turn_id = room.current_turn_player_id()
+        if current_turn_id != actor.player_id:
+            turn_name = room.current_turn_player_name() or "другого игрока"
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": f"Сейчас ход {turn_name}.",
                 }
             )
             return
@@ -309,6 +379,12 @@ async def handle_action(websocket: WebSocket, payload: dict[str, Any]) -> None:
         else:
             await websocket.send_json({"type": "error", "message": "Неизвестное действие."})
             return
+
+        if not room.winner_id:
+            room.advance_turn()
+            next_name = room.current_turn_player_name()
+            if next_name:
+                room.append_event(f"Ход переходит к игроку {next_name}.")
 
     await send_state_to_all()
 

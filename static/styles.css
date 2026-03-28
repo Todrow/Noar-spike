@@ -198,6 +198,11 @@ hr {
   font-size: 0.9rem;
 }
 
+#turnLabel {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .toast {
   position: fixed;
   right: 16px;
