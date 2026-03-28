@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Шпион LAN</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="panel panel-left">
+        <h1>Шпион LAN</h1>
+        <p class="subtitle">Победа при 3 очках. Играйте с соседних устройств в одной сети.</p>
+
+        <div id="joinSection" class="card join-card">
+          <label for="nameInput">Имя игрока</label>
+          <input id="nameInput" type="text" maxlength="30" placeholder="Например, Алина" />
+          <button id="joinBtn">Войти в игру</button>
+          <p class="hint">После входа вы получите свою карту местоположения.</p>
+        </div>
+
+        <div id="meSection" class="card me-card hidden">
+          <h2>Ваш статус</h2>
+          <p><strong>Игрок:</strong> <span id="meName">-</span></p>
+          <p><strong>Очки:</strong> <span id="meScore">0</span></p>
+          <p><strong>Ваша карта:</strong> <span id="meLocation">-</span></p>
+        </div>
+
+        <div id="actionsSection" class="card hidden">
+          <h2>Действия</h2>
+
+          <div class="action-row">
+            <label for="targetCardInput">Карта-цель</label>
+            <input id="targetCardInput" type="text" placeholder="Введите название карты" />
+          </div>
+
+          <div class="button-grid">
+            <button id="killBtn" class="danger">Убить</button>
+            <button id="interrogateBtn">Допрос</button>
+          </div>
+
+          <hr />
+
+          <div class="action-row split">
+            <label>Сдвиг строки</label>
+            <div class="inline">
+              <input id="rowIndexInput" type="number" min="1" max="7" value="1" />
+              <select id="rowDirectionSelect">
+                <option value="left">left</option>
+                <option value="right" selected>right</option>
+              </select>
+              <button id="shiftRowBtn">Сдвинуть</button>
+            </div>
+          </div>
+
+          <div class="action-row split">
+            <label>Сдвиг колонки</label>
+            <div class="inline">
+              <input id="colIndexInput" type="number" min="1" max="7" value="1" />
+              <select id="colDirectionSelect">
+                <option value="up">up</option>
+                <option value="down" selected>down</option>
+              </select>
+              <button id="shiftColBtn">Сдвинуть</button>
+            </div>
+            <p class="hint">Можно сдвигать любую колонку 1-7. Клик по карте подставит ее колонку автоматически.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Игроки</h2>
+          <ul id="playersList" class="players-list"></ul>
+        </div>
+      </section>
+
+      <section class="panel panel-main">
+        <div class="board-wrap card">
+          <div class="board-header">
+            <h2>Поле 7x7</h2>
+            <p id="winnerLabel" class="winner"></p>
+          </div>
+          <div id="board" class="board"></div>
+        </div>
+
+        <div class="card log-card">
+          <h2>Журнал событий</h2>
+          <ul id="logList" class="log-list"></ul>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
