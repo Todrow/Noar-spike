@@ -238,3 +238,44 @@ hr {
     font-size: 0.78rem;
   }
 }
+
+/* ── Shift animations ─────────────────────────────────────────── */
+@keyframes slideFromLeft {
+  from { transform: translateX(-22px); opacity: 0.6; }
+  to   { transform: translateX(0);    opacity: 1;   }
+}
+@keyframes slideFromRight {
+  from { transform: translateX(22px); opacity: 0.6; }
+  to   { transform: translateX(0);   opacity: 1;   }
+}
+@keyframes slideFromTop {
+  from { transform: translateY(-22px); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1;   }
+}
+@keyframes slideFromBottom {
+  from { transform: translateY(22px); opacity: 0.6; }
+  to   { transform: translateY(0);   opacity: 1;   }
+}
+
+.cell.anim-from-left   { animation: slideFromLeft   280ms ease-out; }
+.cell.anim-from-right  { animation: slideFromRight  280ms ease-out; }
+.cell.anim-from-top    { animation: slideFromTop    280ms ease-out; }
+.cell.anim-from-bottom { animation: slideFromBottom 280ms ease-out; }
+
+/* ── Kill animations ──────────────────────────────────────────── */
+@keyframes killHit {
+  0%   { background: rgba(217, 83, 79, 0.95); box-shadow: 0 0 18px rgba(217, 83, 79, 0.8); transform: scale(1.1);  }
+  55%  { background: rgba(217, 83, 79, 0.45); box-shadow: 0 0 8px  rgba(217, 83, 79, 0.3); transform: scale(1.02); }
+  100% { background: rgba(36, 51, 61, 0.72);  box-shadow: none;                             transform: scale(1);    }
+}
+@keyframes killMiss {
+  0%,  100% { transform: translateX(0);    }
+  18%        { transform: translateX(-6px); }
+  36%        { transform: translateX(5px);  }
+  54%        { transform: translateX(-4px); }
+  72%        { transform: translateX(3px);  }
+  90%        { transform: translateX(-1px); }
+}
+
+.cell.anim-kill-hit  { animation: killHit  560ms ease-out; }
+.cell.anim-kill-miss { animation: killMiss 400ms ease-out; }

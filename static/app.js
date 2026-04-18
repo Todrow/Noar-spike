@@ -13,6 +13,10 @@ const state = {
   turnPlayerName: null,
   isMyTurn: false,
   selectedCardName: null,
+  lastAction: null,
+  actionSeq: 0,
+  animatedSeq: 0,
+  pendingAnimation: null,
 };
 
 const el = {
@@ -127,6 +131,18 @@ function render() {
       if (state.me && cardName === state.me.locationName) {
         div.classList.add("me");
       }
+
+      const anim = state.pendingAnimation;
+      if (anim) {
+        if (anim.type === "shift_row" && rowIndex === anim.index) {
+          div.classList.add(anim.direction === "right" ? "anim-from-left" : "anim-from-right");
+        } else if (anim.type === "shift_col" && colIndex === anim.index) {
+          div.classList.add(anim.direction === "down" ? "anim-from-top" : "anim-from-bottom");
+        } else if (anim.type === "kill" && cardName === anim.target) {
+          div.classList.add(anim.hit ? "anim-kill-hit" : "anim-kill-miss");
+        }
+      }
+
       div.addEventListener("click", () => {
         state.selectedCardName = cardName;
         el.targetCardInput.value = cardName;
@@ -217,6 +233,20 @@ ws.addEventListener("message", (event) => {
     state.turnPlayerName = data.state.turnPlayerName || null;
     state.isMyTurn = Boolean(data.state.isMyTurn);
     state.me = data.state.me || null;
+
+    const newSeq = data.state.actionSeq || 0;
+    if (newSeq > state.animatedSeq && data.state.lastAction) {
+      state.pendingAnimation = data.state.lastAction;
+      state.animatedSeq = newSeq;
+    } else {
+      state.pendingAnimation = null;
+      if (newSeq > state.animatedSeq) {
+        state.animatedSeq = newSeq;
+      }
+    }
+    state.lastAction = data.state.lastAction || null;
+    state.actionSeq = newSeq;
+
     render();
   }
 });
