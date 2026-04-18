@@ -96,7 +96,16 @@ class GameRoom:
         self.board = [
             names[row * BOARD_SIZE : (row + 1) * BOARD_SIZE] for row in range(BOARD_SIZE)
         ]
-        self.players.clear()
+        
+        # Переназначаем уникальные местоположения для всех игроков
+        for player in self.players.values():
+            available_locations = [loc for loc in names if loc not in {p.location_name for p in self.players.values() if p != player}]
+            if available_locations:
+                player.location_name = random.choice(available_locations)
+                names.remove(player.location_name)
+            else:
+                player.location_name = random.choice(LOCATION_NAMES)
+                
         self.turn_order.clear()
         self.turn_index = 0
         self.event_log.clear()
@@ -114,6 +123,15 @@ class GameRoom:
 
     def random_location(self) -> str:
         return random.choice(LOCATION_NAMES)
+
+    def unique_random_location(self) -> str:
+        occupied_locations = {player.location_name for player in self.players.values()}
+        available_locations = [loc for loc in LOCATION_NAMES if loc not in occupied_locations]
+        if not available_locations:
+            # Если все локации заняты, возвращаем случайную (это может произойти только если
+            # игроков больше чем уникальных локаций, что маловероятно)
+            return random.choice(LOCATION_NAMES)
+        return random.choice(available_locations)
 
     def append_event(self, message: str) -> None:
         self.event_log.append(message)
@@ -306,7 +324,7 @@ async def handle_join(websocket: WebSocket, payload: dict[str, Any]) -> None:
 
     async with room.lock:
         player_id = uuid.uuid4().hex
-        location_name = room.random_location()
+        location_name = room.unique_random_location()
         room.players[player_id] = Player(
             player_id=player_id,
             name=name[:30],
@@ -416,7 +434,7 @@ def process_kill(actor: Player, payload: dict[str, Any]) -> str | None:
     actor.score += 1
     room.append_event(f"{actor.name} вскрыл {victim.name} и получил 1 очко.")
 
-    victim.location_name = room.random_location()
+    victim.location_name = room.unique_random_location()
     room.append_event(f"{victim.name} получил новую карту местоположения.")
 
     if actor.score >= WIN_SCORE:
