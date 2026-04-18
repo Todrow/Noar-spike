@@ -84,6 +84,8 @@ class GameRoom:
     turn_index: int = 0
     event_log: list[str] = field(default_factory=list)
     winner_id: str | None = None
+    last_action: dict[str, Any] | None = None
+    action_seq: int = 0
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     def __post_init__(self) -> None:
@@ -96,20 +98,12 @@ class GameRoom:
         self.board = [
             names[row * BOARD_SIZE : (row + 1) * BOARD_SIZE] for row in range(BOARD_SIZE)
         ]
-        
-        # Переназначаем уникальные местоположения для всех игроков
-        for player in self.players.values():
-            available_locations = [loc for loc in names if loc not in {p.location_name for p in self.players.values() if p != player}]
-            if available_locations:
-                player.location_name = random.choice(available_locations)
-                names.remove(player.location_name)
-            else:
-                player.location_name = random.choice(LOCATION_NAMES)
-                
         self.turn_order.clear()
         self.turn_index = 0
         self.event_log.clear()
         self.winner_id = None
+        self.last_action = None
+        self.action_seq = 0
 
     def card_to_coord(self, card_name: str) -> tuple[int, int] | None:
         for r, row in enumerate(self.board):
@@ -125,12 +119,11 @@ class GameRoom:
         return random.choice(LOCATION_NAMES)
 
     def unique_random_location(self) -> str:
+        board_locations = [cell for row in self.board for cell in row]
         occupied_locations = {player.location_name for player in self.players.values()}
-        available_locations = [loc for loc in LOCATION_NAMES if loc not in occupied_locations]
+        available_locations = [loc for loc in board_locations if loc not in occupied_locations]
         if not available_locations:
-            # Если все локации заняты, возвращаем случайную (это может произойти только если
-            # игроков больше чем уникальных локаций, что маловероятно)
-            return random.choice(LOCATION_NAMES)
+            return random.choice(board_locations)
         return random.choice(available_locations)
 
     def append_event(self, message: str) -> None:
@@ -245,6 +238,8 @@ class GameRoom:
             "turnPlayerId": turn_player_id,
             "turnPlayerName": self.current_turn_player_name(),
             "isMyTurn": bool(me and turn_player_id and me.player_id == turn_player_id),
+            "lastAction": self.last_action,
+            "actionSeq": self.action_seq,
             "me": {
                 "id": me.player_id,
                 "name": me.name,
@@ -428,6 +423,8 @@ def process_kill(actor: Player, payload: dict[str, Any]) -> str | None:
 
     if not possible_victims:
         room.append_event(f"{actor.name} атаковал карту '{target_card}', но никого не нашел.")
+        room.action_seq += 1
+        room.last_action = {"type": "kill", "target": target_card, "hit": False}
         return None
 
     victim = random.choice(possible_victims)
@@ -441,6 +438,8 @@ def process_kill(actor: Player, payload: dict[str, Any]) -> str | None:
         room.winner_id = actor.player_id
         room.append_event(f"{actor.name} победил. Набрано {actor.score} очка(ов).")
 
+    room.action_seq += 1
+    room.last_action = {"type": "kill", "target": target_card, "hit": True}
     return None
 
 
@@ -472,6 +471,8 @@ def process_interrogate(actor: Player, payload: dict[str, Any]) -> str | None:
     else:
         room.append_event(f"{actor.name} провел допрос у '{target_card}', но никто не поднял руку.")
 
+    room.action_seq += 1
+    room.last_action = None
     return None
 
 
@@ -490,6 +491,8 @@ def process_shift_row(actor: Player, payload: dict[str, Any]) -> str | None:
 
     room.shift_row(row_index - 1, 1 if direction == "right" else -1)
     room.append_event(f"{actor.name} сдвинул строку {row_index} ({direction}).")
+    room.action_seq += 1
+    room.last_action = {"type": "shift_row", "index": row_index - 1, "direction": direction}
     return None
 
 
@@ -508,6 +511,8 @@ def process_shift_col(actor: Player, payload: dict[str, Any]) -> str | None:
 
     room.shift_col(col_index - 1, 1 if direction == "down" else -1)
     room.append_event(f"{actor.name} сдвинул колонку {col_index} ({direction}).")
+    room.action_seq += 1
+    room.last_action = {"type": "shift_col", "index": col_index - 1, "direction": direction}
     return None
 
 
