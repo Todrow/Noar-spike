@@ -472,7 +472,7 @@ def process_interrogate(actor: Player, payload: dict[str, Any]) -> str | None:
         room.append_event(f"{actor.name} провел допрос у '{target_card}', но никто не поднял руку.")
 
     room.action_seq += 1
-    room.last_action = None
+    room.last_action = {"type": "interrogate", "target": target_card}
     return None
 
 

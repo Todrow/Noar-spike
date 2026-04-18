@@ -140,6 +140,22 @@ function render() {
           div.classList.add(anim.direction === "down" ? "anim-from-top" : "anim-from-bottom");
         } else if (anim.type === "kill" && cardName === anim.target) {
           div.classList.add(anim.hit ? "anim-kill-hit" : "anim-kill-miss");
+        } else if (anim.type === "interrogate") {
+          let targetPos = null;
+          for (let r = 0; r < state.board.length; r += 1) {
+            for (let c = 0; c < state.board[r].length; c += 1) {
+              if (state.board[r][c] === anim.target) {
+                targetPos = [r, c];
+              }
+            }
+          }
+          if (
+            targetPos &&
+            Math.abs(rowIndex - targetPos[0]) <= 1 &&
+            Math.abs(colIndex - targetPos[1]) <= 1
+          ) {
+            div.classList.add("anim-interrogate");
+          }
         }
       }
 

@@ -279,3 +279,12 @@ hr {
 
 .cell.anim-kill-hit  { animation: killHit  560ms ease-out; }
 .cell.anim-kill-miss { animation: killMiss 400ms ease-out; }
+
+/* ── Interrogate animation ────────────────────────────────────── */
+@keyframes interrogateFlash {
+  0%   { background: rgba(50, 140, 230, 0.85); box-shadow: 0 0 18px rgba(50, 140, 230, 0.75); }
+  55%  { background: rgba(50, 140, 230, 0.35); box-shadow: 0 0 8px  rgba(50, 140, 230, 0.3);  }
+  100% { background: rgba(36, 51, 61, 0.72);   box-shadow: none;                               }
+}
+
+.cell.anim-interrogate { animation: interrogateFlash 600ms ease-out; }
